@@ -89,14 +89,14 @@ echo "Deployed UI service........"
 
 echo "Creating Kafka and Topics........"
 cat <<EOF | oc apply -n $USERXX-cloudnativeapps -f -
-apiVersion: kafka.strimzi.io/v1beta1
+apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: my-cluster
   namespace: $USERXX-cloudnativeapps
 spec:
   kafka:
-    version: 2.6.0
+    version: 2.7.0
     replicas: 3
     listeners:
       - name: plain
@@ -111,8 +111,8 @@ spec:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
-      log.message.format.version: '2.6'
-      inter.broker.protocol.version: '2.6'
+      log.message.format.version: '2.7'
+      inter.broker.protocol.version: '2.7'
     storage:
       type: ephemeral
   zookeeper:
@@ -125,7 +125,7 @@ spec:
 EOF
 
 cat <<EOF | oc apply -n $USERXX-cloudnativeapps -f -
-apiVersion: kafka.strimzi.io/v1beta1
+apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
   name: orders
@@ -141,7 +141,7 @@ spec:
 EOF
 
 cat <<EOF | oc apply -n $USERXX-cloudnativeapps -f -
-apiVersion: kafka.strimzi.io/v1beta1
+apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
   name: payments
@@ -162,9 +162,13 @@ echo "Deploying Payment service........"
 sed -i'' -e "s/userXX/${USERXX}/g" $PWD/m4/payment-service/src/main/resources/application.properties
 rm -rf $PWD/m4/payment-service/src/main/resources/application.properties-e
 
-mvn clean package -Pnative -DskipTests -Dquarkus.package.uber-jar=false -Dquarkus.native.container-build=true -f $PWD/m4/payment-service
 
-oc label rev/payment-00001 app.openshift.io/runtime=quarkus --overwrite && \
+#BK: only run the following to skip Knative
+mvn clean package -DskipTests -f $PWD/m4/payment-service
+#mvn clean package -Pnative -DskipTests -Dquarkus.package.uber-jar=false -Dquarkus.native.container-build=true -f $PWD/m4/payment-service
+
+#BK: 
+#oc label rev/payment-00001 app.openshift.io/runtime=quarkus --overwrite && \
 oc label dc/payment app.kubernetes.io/part-of=payment --overwrite && \
 oc annotate dc/payment app.openshift.io/connects-to=my-cluster --overwrite && \
 oc annotate dc/payment app.openshift.io/vcs-ref=ocp-4.7 --overwrite
